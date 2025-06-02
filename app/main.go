@@ -6,12 +6,14 @@ import (
 	"io"
 	"os"
 	"unicode/utf8"
+	// "reflect"
 )
 
 // Ensures gofmt doesn't remove the "bytes" import above (feel free to remove this!)
 var _ = bytes.ContainsAny
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
+// os.Args = [/tmp/codecrafters-build-grep-go -E a]
 func main() {
 	if len(os.Args) < 3 || os.Args[1] != "-E" {
 		fmt.Fprintf(os.Stderr, "usage: mygrep -E <pattern>\n")
@@ -26,6 +28,8 @@ func main() {
 		os.Exit(2)
 	}
 
+	// fmt.Println("type =", reflect.TypeOf(line))
+	fmt.Println("ascii=", line)
 	ok, err := matchLine(line, pattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -50,7 +54,15 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
 	// Uncomment this to pass the first stage
-	ok = bytes.ContainsAny(line, pattern)
+	// ok = bytes.ContainsAny(line, pattern)
+
+	ok = false
+	for _,v := range line{
+		if v >= 48 && v<= 57{
+			ok = true
+		}
+	}
+	fmt.Fprintln(os.Stdout, "matched status = ", ok)
 
 	return ok, nil
 }
