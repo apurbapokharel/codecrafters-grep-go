@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
 	// "reflect"
 )
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	fmt.Println("ascii=", line)
+	// fmt.Println("ascii=", line)
 	ok, err := matchLine(line, pattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -44,28 +45,19 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-
-	// fmt.Fprintln(os.Stdout, "pattern = ", pattern)
-	var ok bool
-	switch pattern{
-	case "\\d":
-		ok = false
-		for _,v := range line{
-			if v >= 48 && v<= 57{
-				ok = true
-			}
-		}
-	default:
-		if utf8.RuneCountInString(pattern) != 1 {
-			return false, fmt.Errorf("unsupported pattern: %q", pattern)
-		}
-	
-		// You can use print statements as follows for debugging, they'll be visible when running tests.
-		fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
-	
-		// Uncomment this to pass the first stage
-		ok = bytes.ContainsAny(line, pattern)
+	if utf8.RuneCountInString(strings.Trim(pattern, "\\")) != 1 {
+		return false, fmt.Errorf("unsupported pattern: %q", pattern)
 	}
-	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
+
+	var ok bool
+
+	// You can use print statements as follows for debugging, they'll be visible when running tests.
+	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+
+	pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
+	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789"+"[a-z]"+"[A-Z]"+"_")
+	ok = bytes.ContainsAny(line, pattern)
+
+	fmt.Println("ok =", ok)
 	return ok, nil
 }
