@@ -55,9 +55,34 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
 	pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
-	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789"+"[a-z]"+"[A-Z]"+"_")
+	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	// fmt.Println("pattern =", pattern)
 	ok = bytes.ContainsAny(line, pattern)
 
 	fmt.Println("ok =", ok)
 	return ok, nil
 }
+
+// func matchLine(line []byte, pattern string) (bool, error) {
+// 	// fmt.Fprintln(os.Stdout, "pattern = ", pattern)
+// 	var ok bool
+// 	switch pattern {
+// 	case "\\d":
+// 		ok = false
+// 		for _, v := range line {
+// 			if v >= 48 && v <= 57 {
+// 				ok = true
+// 			}
+// 		}
+// 	default:
+// 		if utf8.RuneCountInString(pattern) != 1 {
+// 			return false, fmt.Errorf("unsupported pattern: %q", pattern)
+// 		}
+// 		// You can use print statements as follows for debugging, they'll be visible when running tests.
+// 		fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+// 		// Uncomment this to pass the first stage
+// 		ok = bytes.ContainsAny(line, pattern)
+// 	}
+// 	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
+// 	return ok, nil
+// }
