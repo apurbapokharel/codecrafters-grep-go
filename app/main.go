@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
-	"unicode/utf8"
 	// "reflect"
 )
 
@@ -44,45 +44,56 @@ func main() {
 	// default exit code is 0 which means success
 }
 
-func matchLine(line []byte, pattern string) (bool, error) {
-	if utf8.RuneCountInString(strings.Trim(pattern, "\\")) != 1 {
-		return false, fmt.Errorf("unsupported pattern: %q", pattern)
-	}
-
-	var ok bool
-
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
-
-	pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
-	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	// fmt.Println("pattern =", pattern)
-	ok = bytes.ContainsAny(line, pattern)
-
-	fmt.Println("ok =", ok)
-	return ok, nil
-}
-
 // func matchLine(line []byte, pattern string) (bool, error) {
-// 	// fmt.Fprintln(os.Stdout, "pattern = ", pattern)
-// 	var ok bool
-// 	switch pattern {
-// 	case "\\d":
-// 		ok = false
-// 		for _, v := range line {
-// 			if v >= 48 && v <= 57 {
-// 				ok = true
-// 			}
-// 		}
-// 	default:
-// 		if utf8.RuneCountInString(pattern) != 1 {
-// 			return false, fmt.Errorf("unsupported pattern: %q", pattern)
-// 		}
-// 		// You can use print statements as follows for debugging, they'll be visible when running tests.
-// 		fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
-// 		// Uncomment this to pass the first stage
-// 		ok = bytes.ContainsAny(line, pattern)
+// 	if utf8.RuneCountInString(strings.Trim(pattern, "\\")) != 1 {
+// 		return false, fmt.Errorf("unsupported pattern: %q", pattern)
 // 	}
-// 	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
+
+// 	var ok bool
+
+// 	// You can use print statements as follows for debugging, they'll be visible when running tests.
+// 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+
+// 	pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
+// 	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+// 	// fmt.Println("pattern =", pattern)
+// 	ok = bytes.ContainsAny(line, pattern)
+
+// 	fmt.Println("ok =", ok)
 // 	return ok, nil
 // }
+
+func matchLine(line []byte, pattern string) (bool, error) {
+	// fmt.Fprintln(os.Stdout, "pattern = ", pattern)
+	var ok bool
+	switch pattern {
+	case "\\d":
+		pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
+		ok = bytes.ContainsAny(line, pattern)
+	case "\\w":
+		pattern = strings.ReplaceAll(pattern, "\\w", "0120123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ3456789")
+		ok = bytes.ContainsAny(line, pattern)
+	default:
+		if matched, _ := regexp.MatchString(`^\[[a-zA-Z]+\]$`, pattern); matched {
+			//pattern can be [__*__]
+			startIndex := strings.Index(pattern, "[")
+			endIndex := strings.Index(pattern, "]")
+			for i := startIndex + 1; i < endIndex; i++ {
+				char := pattern[i]
+				fmt.Println("char", string(char))
+				ok = bytes.ContainsAny(line, string(char))
+				if ok {
+					break
+				}
+			}
+		} else if matched, _ := regexp.MatchString(`^[a-zA-Z]$`, pattern); matched {
+			//pattern cab be a single alphabet "a" or "A"
+			fmt.Println("matched alphabet")
+			ok = bytes.ContainsAny(line, pattern)
+		} else {
+			return false, fmt.Errorf("unsupported pattern: %q", pattern)
+		}
+	}
+	fmt.Fprintln(os.Stdout, "matched status = ", ok)
+	return ok, nil
+}
