@@ -76,19 +76,28 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	default:
 		if matched, _ := regexp.MatchString(`^\[[a-zA-Z]+\]$`, pattern); matched {
 			//pattern can be [__*__]
-			startIndex := strings.Index(pattern, "[")
-			endIndex := strings.Index(pattern, "]")
-			for i := startIndex + 1; i < endIndex; i++ {
+			endIndex := len(pattern) - 1
+			for i := 1; i < endIndex; i++ {
 				char := pattern[i]
-				fmt.Println("char", string(char))
 				ok = bytes.ContainsAny(line, string(char))
 				if ok {
 					break
 				}
 			}
+		} else if matched, _ := regexp.MatchString(`^\[\^[a-zA-Z]+\]$`, pattern); matched {
+			endIndex := len(pattern) - 1
+			for i := 2; i < endIndex; i++ {
+				char := pattern[i]
+				// fmt.Println("char", string(char))
+				ok = bytes.ContainsAny(line, string(char))
+				if ok {
+					break
+				}
+			}
+			ok = !ok
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z]$`, pattern); matched {
 			//pattern cab be a single alphabet "a" or "A"
-			fmt.Println("matched alphabet")
+			// fmt.Println("matched alphabet")
 			ok = bytes.ContainsAny(line, pattern)
 		} else {
 			return false, fmt.Errorf("unsupported pattern: %q", pattern)
