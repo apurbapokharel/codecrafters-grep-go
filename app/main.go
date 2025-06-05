@@ -86,15 +86,20 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			}
 		} else if matched, _ := regexp.MatchString(`^\[\^[a-zA-Z]+\]$`, pattern); matched {
 			endIndex := len(pattern) - 1
+			res := 0
+			searchLength := endIndex - 2
 			for i := 2; i < endIndex; i++ {
 				char := pattern[i]
-				// fmt.Println("char", string(char))
 				ok = bytes.ContainsAny(line, string(char))
 				if ok {
-					break
+					res += 1
 				}
 			}
-			ok = !ok
+			if res == searchLength {
+				ok = false
+			} else {
+				ok = true
+			}
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z]$`, pattern); matched {
 			//pattern cab be a single alphabet "a" or "A"
 			// fmt.Println("matched alphabet")
