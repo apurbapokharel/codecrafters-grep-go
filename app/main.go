@@ -30,8 +30,9 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	// fmt.Println("ascii=", line)
-	ok, err := matchLine(line, pattern)
+	// ok, err := matchLine(line, pattern)
+	ok, err := matchChars(pattern, string(line))
+	// fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -44,24 +45,44 @@ func main() {
 	// default exit code is 0 which means success
 }
 
-// func matchLine(line []byte, pattern string) (bool, error) {
-// 	if utf8.RuneCountInString(strings.Trim(pattern, "\\")) != 1 {
-// 		return false, fmt.Errorf("unsupported pattern: %q", pattern)
-// 	}
+func matchChars(reExp string, checkString string) (bool, error) {
+	checkIndex := 0
+	l, r := 0, 1
+	var nextExp string
+	for r <= len(reExp) {
+		ok := true
+		nextExp = reExp[l:r]
+		// println(l, r, nextExp)
+		if nextExp == "\\" {
+			r++
+			continue
+		} else if nextExp == "\\d" || nextExp == "\\w" {
+			nextCheckString := checkString[checkIndex : checkIndex+1]
+			checkIndex++
+			l += 2
+			r++
+			ok, _ = matchLine([]byte(nextCheckString), nextExp)
+			// println(ok, nextExp, nextCheckString)
+		} else if nextExp == " " && checkString[checkIndex:checkIndex+1] == " " {
+			l++
+			checkIndex++
+			r++
+			nextExp = ""
+			continue
+		} else if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, nextExp); matched {
+			r++
+			continue
+		}
 
-// 	var ok bool
-
-// 	// You can use print statements as follows for debugging, they'll be visible when running tests.
-// 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
-
-// 	pattern = strings.ReplaceAll(pattern, "\\d", "0123456789")
-// 	pattern = strings.ReplaceAll(pattern, "\\w", "0123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-// 	// fmt.Println("pattern =", pattern)
-// 	ok = bytes.ContainsAny(line, pattern)
-
-// 	fmt.Println("ok =", ok)
-// 	return ok, nil
-// }
+		if !ok {
+			return ok, nil
+		}
+	}
+	if nextExp != checkString[checkIndex:] {
+		return false, nil
+	}
+	return true, nil
+}
 
 func matchLine(line []byte, pattern string) (bool, error) {
 	// fmt.Fprintln(os.Stdout, "pattern = ", pattern)
@@ -76,14 +97,8 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	default:
 		if matched, _ := regexp.MatchString(`^\[[a-zA-Z]+\]$`, pattern); matched {
 			//pattern can be [__*__]
-			endIndex := len(pattern) - 1
-			for i := 1; i < endIndex; i++ {
-				char := pattern[i]
-				ok = bytes.ContainsAny(line, string(char))
-				if ok {
-					break
-				}
-			}
+			toCheck := pattern[1 : len(pattern)-1]
+			ok = bytes.ContainsAny(line, toCheck)
 		} else if matched, _ := regexp.MatchString(`^\[\^[a-zA-Z]+\]$`, pattern); matched {
 			endIndex := len(pattern) - 1
 			res := 0
@@ -108,6 +123,6 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			return false, fmt.Errorf("unsupported pattern: %q", pattern)
 		}
 	}
-	fmt.Fprintln(os.Stdout, "matched status = ", ok)
+	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
 	return ok, nil
 }
