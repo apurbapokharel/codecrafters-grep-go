@@ -91,7 +91,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 				}
 			}
 		} else {
-			return false, nil
+			return matchLine([]byte(checkString), reExp)
 		}
 	}
 	return true, nil
