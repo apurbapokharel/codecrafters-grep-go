@@ -53,7 +53,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 		return true, nil
 	}
 	if len(checkString) == 0 && len(reExp) != 0 {
-		return false, fmt.Errorf("no more char to check")
+		return false, nil
 	}
 	for r <= len(reExp) {
 		ok := true
@@ -73,31 +73,25 @@ func matchChars(checkString string, reExp string) (bool, error) {
 			}
 			index := bytes.IndexAny([]byte(checkString), chars)
 			// println("index", index, chars)
-			nextMatch, err := matchChars(checkString[index+1:], reExp[r:])
-			if err != nil {
-				return false, err
-			}
+			nextMatch, _ := matchChars(checkString[index+1:], reExp[r:])
 			return ok && nextMatch, nil
 		} else if nextExp == " " {
 			if checkString[0:1] != " " {
-				return false, fmt.Errorf("White space mismatch")
+				return false, nil
 			}
-			nextMatch, err := matchChars(checkString[1:], reExp[r:])
-			if err != nil {
-				return false, err
-			}
+			nextMatch, _ := matchChars(checkString[1:], reExp[r:])
 			return ok && nextMatch, nil
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, nextExp); matched {
 			r++
 			if r > len(reExp) {
 				if !bytes.Equal([]byte(checkString[0:len(reExp)]), []byte(reExp)) {
-					return false, fmt.Errorf("Strings mismatch")
+					return false, nil
 				} else {
 					return true, nil
 				}
 			}
 		} else {
-			return false, fmt.Errorf("Unsupported operation")
+			return false, nil
 		}
 	}
 	return true, nil
