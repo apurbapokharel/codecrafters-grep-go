@@ -31,8 +31,8 @@ func main() {
 
 	// fmt.Println("type =", reflect.TypeOf(line))
 	// ok, err := matchLine(line, pattern)
-	ok, err := matchChars(pattern, string(line))
-	// fmt.Println("ok=", ok)
+	ok, err := matchChars(string(line), pattern)
+	fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -45,10 +45,13 @@ func main() {
 	// default exit code is 0 which means success
 }
 
-func matchChars(reExp string, checkString string) (bool, error) {
-	checkIndex := 0
+func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
+	// fmt.Println(checkString, reExp)
+	if len(checkString) == 0 && len(reExp) != 0 || len(checkString) != 0 && len(reExp) == 0 {
+		return false, fmt.Errorf("no more char to check")
+	}
 	for r <= len(reExp) {
 		ok := true
 		nextExp = reExp[l:r]
@@ -57,29 +60,40 @@ func matchChars(reExp string, checkString string) (bool, error) {
 			r++
 			continue
 		} else if nextExp == "\\d" || nextExp == "\\w" {
-			nextCheckString := checkString[checkIndex : checkIndex+1]
-			checkIndex++
-			l += 2
-			r++
-			ok, _ = matchLine([]byte(nextCheckString), nextExp)
-			// println(ok, nextExp, nextCheckString)
-		} else if nextExp == " " && checkString[checkIndex:checkIndex+1] == " " {
-			l++
-			checkIndex++
-			r++
-			nextExp = ""
-			continue
+			ok, _ = matchLine([]byte(checkString), nextExp)
+			if !ok {
+				return false, nil
+			}
+			chars := "01234556789"
+			if nextExp == "\\w" {
+				chars = "0120123456789abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ3456789"
+			}
+			index := bytes.IndexAny([]byte(checkString), chars)
+			// println("index", index, chars)
+			nextMatch, err := matchChars(checkString[index+1:], reExp[r:])
+			if err != nil {
+				return false, err
+			}
+			return ok && nextMatch, nil
+		} else if nextExp == " " {
+			if checkString[0:1] != " " {
+				return false, fmt.Errorf("White space mismatch")
+			}
+			nextMatch, err := matchChars(checkString[1:], reExp[r:])
+			if err != nil {
+				return false, err
+			}
+			return ok && nextMatch, nil
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, nextExp); matched {
 			r++
-			continue
+			if r > len(checkString) {
+				if !bytes.Equal([]byte(checkString), []byte(reExp)) {
+					return false, fmt.Errorf("Strings mismatch")
+				}
+			}
+		} else {
+			return false, fmt.Errorf("Unsupported operation")
 		}
-
-		if !ok {
-			return ok, nil
-		}
-	}
-	if nextExp != checkString[checkIndex:] {
-		return false, nil
 	}
 	return true, nil
 }
