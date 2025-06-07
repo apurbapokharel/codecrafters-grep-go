@@ -49,7 +49,10 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
 	// fmt.Println(checkString, reExp)
-	if len(checkString) == 0 && len(reExp) != 0 || len(checkString) != 0 && len(reExp) == 0 {
+	if len(checkString) != 0 && len(reExp) == 0 {
+		return true, nil
+	}
+	if len(checkString) == 0 && len(reExp) != 0 {
 		return false, fmt.Errorf("no more char to check")
 	}
 	for r <= len(reExp) {
@@ -87,8 +90,10 @@ func matchChars(checkString string, reExp string) (bool, error) {
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, nextExp); matched {
 			r++
 			if r > len(reExp) {
-				if !bytes.Equal([]byte(checkString), []byte(reExp)) {
+				if !bytes.Equal([]byte(checkString[0:len(reExp)]), []byte(reExp)) {
 					return false, fmt.Errorf("Strings mismatch")
+				} else {
+					return true, nil
 				}
 			}
 		} else {
