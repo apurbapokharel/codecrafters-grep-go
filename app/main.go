@@ -86,7 +86,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 			return ok && nextMatch, nil
 		} else if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, nextExp); matched {
 			r++
-			if r > len(checkString) {
+			if r > len(reExp) {
 				if !bytes.Equal([]byte(checkString), []byte(reExp)) {
 					return false, fmt.Errorf("Strings mismatch")
 				}
