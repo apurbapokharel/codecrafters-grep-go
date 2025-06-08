@@ -143,7 +143,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 }
 */
 
-// Someones implementation with library that just looks so clean
+// Someones implementation with library that just looks so clean. This feels like cheating though.
 func matchLine(line []byte, pattern string) (bool, error) {
 	patternRuneCount := utf8.RuneCountInString(pattern)
 	if patternRuneCount < 1 {
@@ -166,6 +166,10 @@ func validatePatternHasCharacterClasses(p string) bool {
 	}
 
 	if containsCharacterClass(p, `^\^.+$`) {
+		return true
+	}
+
+	if containsCharacterClass(p, `^.+\$$`) {
 		return true
 	}
 
