@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 	// "reflect"
 )
 
@@ -30,8 +31,8 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	// ok, err := matchLine(line, pattern)
-	ok, err := matchChars(string(line), pattern)
+	ok, err := matchLine(line, pattern)
+	// ok, err := matchChars(string(line), pattern)
 	fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -45,6 +46,7 @@ func main() {
 	// default exit code is 0 which means success
 }
 
+/* My implementaion without library support
 func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
@@ -138,4 +140,46 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	}
 	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
 	return ok, nil
+}
+*/
+
+// Someones implementation with library that just looks so clean
+func matchLine(line []byte, pattern string) (bool, error) {
+	patternRuneCount := utf8.RuneCountInString(pattern)
+	if patternRuneCount < 1 {
+		return false, fmt.Errorf("unsupported pattern: %q", pattern)
+	}
+
+	var ok bool
+	if validatePatternHasCharacterClasses(pattern) {
+		ok = containsCharacterClass(string(line), pattern)
+	} else {
+		ok = bytes.ContainsAny(line, pattern)
+	}
+
+	return ok, nil
+}
+
+func validatePatternHasCharacterClasses(p string) bool {
+	if containsCharacterClass(p, `^\[.*.\]$`) {
+		return true
+	}
+
+	if containsCharacterClass(p, `^\^.+$`) {
+		return true
+	}
+
+	if strings.Contains(p, `\d`) {
+		return true
+	}
+
+	if strings.Contains(p, `\w`) {
+		return true
+	}
+
+	return false
+}
+
+func containsCharacterClass(s string, p string) bool {
+	return regexp.MustCompile(p).MatchString(s)
 }
