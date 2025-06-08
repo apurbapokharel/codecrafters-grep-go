@@ -161,22 +161,32 @@ func matchLine(line []byte, pattern string) (bool, error) {
 }
 
 func validatePatternHasCharacterClasses(p string) bool {
+	// [^a] or [ab]
 	if containsCharacterClass(p, `^\[.*.\]$`) {
 		return true
 	}
 
+	// ^staringString
 	if containsCharacterClass(p, `^\^.+$`) {
 		return true
 	}
 
+	// endingString$
 	if containsCharacterClass(p, `^.+\$$`) {
 		return true
 	}
 
+	// one or more someChar+
+	if containsCharacterClass(p, `^.+\+.*$`) {
+		return true
+	}
+
+	// number
 	if strings.Contains(p, `\d`) {
 		return true
 	}
 
+	// alphanums
 	if strings.Contains(p, `\w`) {
 		return true
 	}
