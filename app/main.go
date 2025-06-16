@@ -94,17 +94,16 @@ func matchChars(checkString string, reExp string) (bool, error) {
 		remLength := len(reExp) - len(reExp[index-1:])
 		preIndexMatch, _ := matchChars(checkString[:remLength], reExp[:index-1])
 		// check for zero or one occurence, which is no check
-		// checkChar := checkString[remLength]
-		// regChar := reExp[index-1]
-		// if checkChar
-
 		// check after for checkString the superset of regExp
+		remLength = len(reExp[index+1:])
 		postIndexMatch := false
-		if index+1 >= len(checkString) && index+1 >= len(reExp) {
+		if remLength == 0 {
 			postIndexMatch = true
 		} else {
-			postIndexMatch, _ = matchChars(checkString[index+1:], reExp[index+1:])
+			checkStrRemLength := len(checkString) - remLength
+			postIndexMatch, _ = matchChars(checkString[checkStrRemLength:], reExp[index+1:])
 		}
+		// fmt.Println(preIndexMatch, postIndexMatch)
 		return preIndexMatch && postIndexMatch, nil
 	}
 	for r <= len(reExp) {
