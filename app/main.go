@@ -31,8 +31,8 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	ok, err := matchLine(line, pattern)
-	// ok, err := matchChars(string(line), pattern)
+	// ok, err := matchLine2(line, pattern)
+	ok, err := matchChars(string(line), pattern)
 	fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -46,16 +46,66 @@ func main() {
 	// default exit code is 0 which means success
 }
 
-/* My implementaion without library support
+// My implementaion without library support
 func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
 	// fmt.Println(checkString, reExp)
+	// just matching reExp if all reExp match done than return true
 	if len(checkString) != 0 && len(reExp) == 0 {
 		return true, nil
 	}
+	// run out of checkString to match with reExp
 	if len(checkString) == 0 && len(reExp) != 0 {
 		return false, nil
+	}
+	//check start of string
+	if string(reExp[0]) == "^" {
+		return strings.HasPrefix(checkString, reExp[1:]), nil
+	}
+	// check end of string
+	if string(reExp[len(reExp)-1]) == "$" {
+		return strings.HasSuffix(checkString, reExp[:len(reExp)-1]), nil
+	}
+	// check for one or more times match
+	if index := bytes.IndexAny([]byte(reExp), "+"); index != -1 {
+		skipChar := reExp[index-1]
+		i, j := 0, 0
+		// skip past checking all the occurence of this character
+		for i = index; i < len(checkString); i++ {
+			if checkString[i] != skipChar {
+				break
+			}
+		}
+		for j = index + 1; j < len(reExp); j++ {
+			if reExp[j] != skipChar {
+				break
+			}
+		}
+		// check before and after for match
+		preIndexMatch, _ := matchChars(checkString[:index], reExp[:index])
+		postIndexMatch, _ := matchChars(checkString[i:], reExp[j:])
+		return preIndexMatch && postIndexMatch, nil
+
+	}
+	// check for zero or more times
+	if index := bytes.IndexAny([]byte(reExp), "?"); index != -1 {
+		// check before for exact match
+		remLength := len(reExp) - len(reExp[index-1:])
+		preIndexMatch, _ := matchChars(checkString[:remLength], reExp[:index-1])
+		// check for zero or one occurence, which is no check
+		// checkChar := checkString[remLength]
+		// regChar := reExp[index-1]
+		// if checkChar
+
+		// check after for checkString the superset of regExp
+		postIndexMatch := false
+		if index+1 >= len(checkString) && index+1 >= len(reExp) {
+			postIndexMatch = true
+		} else {
+			postIndexMatch, _ = matchChars(checkString[index+1:], reExp[index+1:])
+		}
+		return preIndexMatch && postIndexMatch, nil
 	}
 	for r <= len(reExp) {
 		ok := true
@@ -141,10 +191,10 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
 	return ok, nil
 }
-*/
 
-// Someones implementation with library that just looks so clean. This feels like cheating though.
-func matchLine(line []byte, pattern string) (bool, error) {
+// Someones implementation that i extended with library that just looks so clean. This feels like cheating though.
+
+func matchLine2(line []byte, pattern string) (bool, error) {
 	patternRuneCount := utf8.RuneCountInString(pattern)
 	if patternRuneCount < 1 {
 		return false, fmt.Errorf("unsupported pattern: %q", pattern)
