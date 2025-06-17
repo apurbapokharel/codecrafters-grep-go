@@ -31,8 +31,8 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	// ok, err := matchLine2(line, pattern)
-	ok, err := matchChars(string(line), pattern)
+	ok, err := matchLine2(line, pattern)
+	// ok, err := matchChars(string(line), pattern)
 	fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -89,6 +89,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 
 	}
 	// check for zero or more times
+	// does not support aczzct and c?at
 	if index := bytes.IndexAny([]byte(reExp), "?"); index != -1 {
 		checkChar := reExp[index-1]
 		var checkCharAfter byte
@@ -96,22 +97,22 @@ func matchChars(checkString string, reExp string) (bool, error) {
 			checkCharAfter = reExp[index+1]
 		}
 
-		// check from start to ___*__(checkChar)?___*___ char from regExp subset of checkstring
+		// 1.check from start to ___*__(checkChar)?___*___ char from regExp subset of checkstring
 
-		// check if the start index match
+		// a.check if the start index match
 		startChar := reExp[0]
 		checkIndex := bytes.IndexAny([]byte(checkString), string(startChar))
 		if checkIndex == -1 {
 			return false, nil
 		}
-		// once index match check if the rem substring until checkChar match
+		// b.once index match check if the rem substring until checkChar match
 		var preIndexMatch bool
 		remLength := len(reExp) - len(reExp[index-1:])
 		preIndexMatch, _ = matchChars(checkString[checkIndex:checkIndex+remLength], reExp[:index-1])
 		if !preIndexMatch {
 			return false, nil
 		}
-		// check if the checkchar match or match the postSubString
+		// 2.check if the checkchar match or match the postSubString
 		checkIndex = checkIndex + remLength
 		var postIndexMatch bool
 		if checkString[checkIndex] == checkChar || checkString[checkIndex] == checkCharAfter {
@@ -235,6 +236,16 @@ func matchLine2(line []byte, pattern string) (bool, error) {
 }
 
 func validatePatternHasCharacterClasses(p string) bool {
+	// .
+	if containsCharacterClass(p, `^.*\..*$`) {
+		return true
+	}
+
+	// ?
+	if containsCharacterClass(p, `^.*.?.*$`) {
+		return true
+	}
+
 	// [^a] or [ab]
 	if containsCharacterClass(p, `^\[.*.\]$`) {
 		return true
