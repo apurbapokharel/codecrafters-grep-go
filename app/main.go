@@ -90,21 +90,46 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	}
 	// check for zero or more times
 	if index := bytes.IndexAny([]byte(reExp), "?"); index != -1 {
-		// check before for exact match
-		remLength := len(reExp) - len(reExp[index-1:])
-		preIndexMatch, _ := matchChars(checkString[:remLength], reExp[:index-1])
-		// check for zero or one occurence, which is no check
-		// check after for checkString the superset of regExp
-		remLength = len(reExp[index+1:])
-		postIndexMatch := false
-		if remLength == 0 {
-			postIndexMatch = true
-		} else {
-			checkStrRemLength := len(checkString) - remLength
-			postIndexMatch, _ = matchChars(checkString[checkStrRemLength:], reExp[index+1:])
+		checkChar := reExp[index-1]
+		var checkCharAfter byte
+		if index+1 < len(reExp) {
+			checkCharAfter = reExp[index+1]
 		}
-		// fmt.Println(preIndexMatch, postIndexMatch)
-		return preIndexMatch && postIndexMatch, nil
+
+		// check from start to ___*__(checkChar)?___*___ char from regExp subset of checkstring
+
+		// check if the start index match
+		startChar := reExp[0]
+		checkIndex := bytes.IndexAny([]byte(checkString), string(startChar))
+		if checkIndex == -1 {
+			return false, nil
+		}
+		// once index match check if the rem substring until checkChar match
+		var preIndexMatch bool
+		remLength := len(reExp) - len(reExp[index-1:])
+		preIndexMatch, _ = matchChars(checkString[checkIndex:checkIndex+remLength], reExp[:index-1])
+		if !preIndexMatch {
+			return false, nil
+		}
+		// check if the checkchar match or match the postSubString
+		checkIndex = checkIndex + remLength
+		var postIndexMatch bool
+		if checkString[checkIndex] == checkChar || checkString[checkIndex] == checkCharAfter {
+			remLength := len(reExp[index+1:])
+			postIndexMatch = false
+			if remLength == 0 {
+				postIndexMatch = true
+			} else {
+				checkIndex = len(checkString) - remLength
+				postIndexMatch, _ = matchChars(checkString[checkIndex:], reExp[index+1:])
+			}
+		} else {
+			return false, nil
+		}
+		if !postIndexMatch {
+			return false, nil
+		}
+		return true, nil
 	}
 	for r <= len(reExp) {
 		ok := true
