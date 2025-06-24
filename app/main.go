@@ -31,8 +31,8 @@ func main() {
 	}
 
 	// fmt.Println("type =", reflect.TypeOf(line))
-	ok, err := matchLine2(line, pattern)
-	// ok, err := matchChars(string(line), pattern)
+	// ok, err := matchLine2(line, pattern)
+	ok, err := matchChars(string(line), pattern)
 	fmt.Println("ok=", ok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -67,25 +67,37 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	if string(reExp[len(reExp)-1]) == "$" {
 		return strings.HasSuffix(checkString, reExp[:len(reExp)-1]), nil
 	}
-	// check for one or more times match
+	// check for one or more times match // refactor to support wildcard
 	if index := bytes.IndexAny([]byte(reExp), "+"); index != -1 {
 		skipChar := reExp[index-1]
-		i, j := 0, 0
-		// skip past checking all the occurence of this character
-		for i = index; i < len(checkString); i++ {
-			if checkString[i] != skipChar {
+
+		lenStringBefore := len(reExp[:index-1])
+		preIndexMatch, _ := matchChars(checkString[:lenStringBefore+1], reExp[:index-1])
+		if index == len(reExp)-1 || !preIndexMatch {
+			return preIndexMatch, nil
+		}
+		stopChar := reExp[index+1]
+		i := lenStringBefore
+		var res bool
+		for true {
+			if string(skipChar) == "." || checkString[i] == skipChar {
+				i++
+				// j++
+			} else if checkString[i] != skipChar {
+				res = false
+				break
+			}
+
+			if i == len(checkString) || checkString[i] == stopChar {
+				res = true
 				break
 			}
 		}
-		for j = index + 1; j < len(reExp); j++ {
-			if reExp[j] != skipChar {
-				break
-			}
+		if !res {
+			return false, nil
 		}
-		// check before and after for match
-		preIndexMatch, _ := matchChars(checkString[:index], reExp[:index])
-		postIndexMatch, _ := matchChars(checkString[i:], reExp[j:])
-		return preIndexMatch && postIndexMatch, nil
+		postIndexMatch := bytes.Contains([]byte(checkString[i:]), []byte(reExp[index+1:]))
+		return postIndexMatch, nil
 
 	}
 	// check for zero or more times
@@ -132,6 +144,14 @@ func matchChars(checkString string, reExp string) (bool, error) {
 		}
 		return true, nil
 	}
+	// WILDCARD: match 1 times
+	if index := bytes.IndexAny([]byte(reExp), "."); index != -1 {
+		lenPre := len(reExp) - len(reExp[index:])
+		preSubArray := bytes.Equal([]byte(checkString[:lenPre]), []byte(reExp[:index]))
+		postSubArray := bytes.Contains([]byte(checkString[lenPre+1:]), []byte(reExp[index+1:]))
+		return preSubArray && postSubArray, nil
+	}
+	// Remaining cases
 	for r <= len(reExp) {
 		ok := true
 		nextExp = reExp[l:r]
