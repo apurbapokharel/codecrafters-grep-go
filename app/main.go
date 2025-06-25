@@ -50,8 +50,7 @@ func main() {
 func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
-	// fmt.Println(checkString, reExp)
-	// just matching reExp if all reExp match done than return true
+	// if all reExp match done than return true
 	if len(checkString) != 0 && len(reExp) == 0 {
 		return true, nil
 	}
@@ -59,7 +58,18 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	if len(checkString) == 0 && len(reExp) != 0 {
 		return false, nil
 	}
-	//check start of string
+	// check if "|" exits
+	if index := bytes.IndexAny([]byte(reExp), "|"); index != -1 {
+		reExp = reExp[1 : len(reExp)-1]
+		stringsToCheck := bytes.Split([]byte(reExp), []byte("|"))
+		res := false
+		for i := 0; i < len(stringsToCheck); i++ {
+			funRes, _ := matchChars(checkString, string(stringsToCheck[i]))
+			res = res || funRes
+		}
+		return res, nil
+	}
+	// check start of string
 	if string(reExp[0]) == "^" {
 		return strings.HasPrefix(checkString, reExp[1:]), nil
 	}
@@ -79,6 +89,10 @@ func matchChars(checkString string, reExp string) (bool, error) {
 		stopChar := reExp[index+1]
 		i := lenStringBefore
 		var res bool
+		// check the skip char
+		// if skip char is . skip until stop char is encountered
+		// else skip the skip char
+		// break if the checkString has nothing after the skip char
 		for true {
 			if string(skipChar) == "." || checkString[i] == skipChar {
 				i++
