@@ -60,12 +60,17 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	}
 	// check if "|" exits
 	if index := bytes.IndexAny([]byte(reExp), "|"); index != -1 {
-		reExp = reExp[1 : len(reExp)-1]
-		stringsToCheck := bytes.Split([]byte(reExp), []byte("|"))
+		startParen := bytes.IndexAny([]byte(reExp), "(")
+		endParen := bytes.IndexAny([]byte(reExp), ")")
+		patternString := reExp[startParen+1 : endParen]
+		remString := reExp[endParen+1:]
+		stringsToCheck := bytes.Split([]byte(patternString), []byte("|"))
 		res := false
 		for i := 0; i < len(stringsToCheck); i++ {
-			funRes, _ := matchChars(checkString, string(stringsToCheck[i]))
-			res = res || funRes
+			reExpToCheck := reExp[:startParen] + string(stringsToCheck[i]) + remString
+			println(checkString, reExpToCheck)
+			// funRes, _ := matchChars(checkString, reExpToCheck)
+			res = res || bytes.Contains([]byte(checkString), []byte(reExpToCheck))
 		}
 		return res, nil
 	}
@@ -169,7 +174,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 	for r <= len(reExp) {
 		ok := true
 		nextExp = reExp[l:r]
-		// println(l, r, nextExp)
+		println(l, r, nextExp)
 		if nextExp == "\\" {
 			r++
 			continue
@@ -196,6 +201,7 @@ func matchChars(checkString string, reExp string) (bool, error) {
 			r++
 			if r > len(reExp) {
 				if !bytes.Equal([]byte(checkString[0:len(reExp)]), []byte(reExp)) {
+					// if !bytes.Contains([]byte(checkString), []byte(reExp)) {
 					return false, nil
 				} else {
 					return true, nil
