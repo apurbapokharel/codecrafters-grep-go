@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strings"
-	"unicode/utf8"
-	// "reflect"
+
+	myast "github.com/codecrafters-io/grep-starter-go/app/AST"
 )
 
 // Ensures gofmt doesn't remove the "bytes" import above (feel free to remove this!)
@@ -30,10 +28,16 @@ func main() {
 		os.Exit(2)
 	}
 
-	// fmt.Println("type =", reflect.TypeOf(line))
+	regExpParser := myast.NewParser(pattern)
+	node := regExpParser.Parse0()
+	node.Log()
+
+	checkStringParser := myast.NewParser(string(line))
+	ok, err := checkStringParser.CheckParseTree(node)
+	fmt.Println("result", ok)
+
 	// ok, err := matchLine2(line, pattern)
-	ok, err := matchChars(string(line), pattern)
-	fmt.Println("ok=", ok)
+	// ok, err := matchChars(string(line), pattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -46,7 +50,13 @@ func main() {
 	// default exit code is 0 which means success
 }
 
-// My implementaion without library support
+func matchChars(checkString string, reExp string) (bool, error) {
+	return true, nil
+}
+
+// My implementaion without library
+// support supports determinstic cases only
+/*
 func matchChars(checkString string, reExp string) (bool, error) {
 	l, r := 0, 1
 	var nextExp string
@@ -256,9 +266,10 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	// fmt.Fprintln(os.Stdout, "matched status = ", ok)
 	return ok, nil
 }
+*/
 
-// Someones implementation that i extended with library that just looks so clean. This feels like cheating though.
-
+// Someones implementation that i extended with library that just looks so clean but is cheating though.
+/*
 func matchLine2(line []byte, pattern string) (bool, error) {
 	patternRuneCount := utf8.RuneCountInString(pattern)
 	if patternRuneCount < 1 {
@@ -322,3 +333,4 @@ func validatePatternHasCharacterClasses(p string) bool {
 func containsCharacterClass(s string, p string) bool {
 	return regexp.MustCompile(p).MatchString(s)
 }
+*/
