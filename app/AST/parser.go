@@ -70,7 +70,7 @@ func (p *Parser) Parse1() RegexpNode {
 		return Concat{node, p.Parse1()}
 	}
 
-	if current == "\\" || current == "(" || current == "^" || current == "$" {
+	if current == "\\" || current == "(" || current == "^" || current == "$" || current == "." {
 		return Concat{node, p.Parse1()}
 	}
 
@@ -108,6 +108,10 @@ func (p *Parser) Parse3() RegexpNode {
 		node := Literal{[]rune(current)[0]}
 		p.advance()
 		return node
+	}
+	if current == "." {
+		p.advance()
+		return Wildcard{}
 	}
 	if current == "\\" {
 		p.advance()
@@ -189,7 +193,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	// If true return else check till checkstring is end
 	// We need contigous match so skipChar is set to false once a first match (this is done in match(literals,nums, alphanums) is found
 	if c, ok := node.(Concat); ok {
-		// println("Inside Concat, currentIndex = ", p.currentIndex(), c.get(), p.context.skipChars)
+		println("Inside Concat, currentIndex = ", p.currentIndex(), c.get(), p.context.skipChars)
 		firstLeftChild, err := getFirstLeftChild(node)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -204,7 +208,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 		// Greedy parsing with Backtracking for fallback
 		if firstLeftChild == "Repeat()" {
-			// println("Repeat Concat, index = ", p.currentIndex(), c.get())
+			println("Repeat Concat, index = ", p.currentIndex(), c.get())
 			prevIndex := p.currentIndex()
 			leftParse, _ := p.CheckParseTree(c.leftNode)
 			// Repeat + has is one or more so index has to go up by 1 at the least
@@ -217,6 +221,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			if rightParse {
 				return true, nil
 			}
+			println("Backtrack")
 			// if greedy repeat does not work try backtracking
 			if !rightParse {
 				for i := p.currentIndex() - 1; i > prevIndex; i-- {
@@ -293,11 +298,20 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			return leftMatch && rightMatch, nil
 		}
 
+		if firstLeftChild == "Wildcard()" {
+			// println("Alternate Concat, index = ", p.currentIndex())
+			// skip check as it can go with anything
+			p.advance()
+			p.context.skipChars = false
+			rightMatch, _ := p.CheckParseTree(c.rightNode)
+			return rightMatch, nil
+		}
+
 		// println("FLC", firstLeftChild)
 		var status bool = false
 		//FIXME: Using loop here is not the right thing i think
 		for i := p.i; i < len(p.pattern); i++ {
-			// println("Retrying", p.context.skipChars, firstLeftChild)
+			println("Retrying", p.context.skipChars, firstLeftChild)
 			if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[i])); matched {
 				p.moveIndex(i + 1)
 				p.context.skipChars = false
@@ -311,7 +325,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 					status = true
 					break
 				}
-				p.context.skipChars = true
+				// p.context.skipChars = true
 				p.moveIndex(i)
 				// break
 			}
@@ -324,9 +338,9 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			// I will match but a will not so return false and then check again (in the main loop) thats what this means
 
 			// if we are searching inside a matched case we cannot skip chars
-			if !p.context.skipChars {
-				return false, nil
-			}
+			// if !p.context.skipChars {
+			// 	return false, nil
+			// }
 		}
 		return status, nil
 
@@ -344,7 +358,12 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		}
 		// println("Repeat Self out, curentIndex = ", p.currentIndex())
 		return res, nil
+	}
 
+	if _, ok := node.(Wildcard); ok {
+		p.advance()
+		p.context.skipChars = false
+		return true, nil
 	}
 
 	//FIXME: this does not work echo -n "a" | ./your_program.sh -E "s?"
@@ -511,6 +530,10 @@ func getFirstLeftChild(node RegexpNode) (string, error) {
 
 	if _, ok := node.(Alternate); ok {
 		return "Alternate()", nil
+	}
+
+	if c, ok := node.(Wildcard); ok {
+		return c.get(), nil
 	}
 
 	if c, ok := node.(Literal); ok {

@@ -9,7 +9,6 @@ echo -n "cat, dogs and cows" | ./your_program.sh -E "((cat|dog|cow)s?(, | and )?
 echo -n "c, d and c" | ./your_program.sh -E "((c|d)(, | and )?)+$" //true
 echo -n "c , c " | ./your_program.sh -E "(c |, )+$" //true
 
-
 ### Stage # (WildCard)
 echo -n "cat" | ./your_program.sh -E "c.t" //true
 echo -n "car" | ./your_program.sh -E "c.t" //false

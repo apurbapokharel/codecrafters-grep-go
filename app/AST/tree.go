@@ -144,6 +144,17 @@ func (a AnchorEnd) Log() {
 	fmt.Println(a.get())
 }
 
+type Wildcard struct {
+}
+
+func (w Wildcard) get() string {
+	return "Wildcard()"
+}
+
+func (w Wildcard) Log() {
+	fmt.Println(w.get())
+}
+
 type Undefined struct {
 }
 
