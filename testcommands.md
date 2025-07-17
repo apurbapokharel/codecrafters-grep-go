@@ -67,6 +67,7 @@ echo -n "efgh" | ./your_program.sh -E "[abcd]"
 ### Stage #MR9 (Match alphanumeric characters)
 echo -n "word" | ./your_program.sh -E "\w"
 echo -n "$!?" | ./your_program.sh -E "\w"
+echo -n "×+-_÷€-" | ./your_program.sh -E "\w"
 
 ### Stage #OQ2 (Match digits)
 echo -n "123" | ./your_program.sh -E "\d"

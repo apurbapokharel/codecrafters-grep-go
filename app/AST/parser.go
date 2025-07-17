@@ -447,7 +447,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	}
 
 	if _, ok := node.(AlphaNum); ok {
-		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]$`, current); matched {
+		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_]$`, current); matched {
 			p.context.skipChars = false
 			p.advance()
 			return true, nil
