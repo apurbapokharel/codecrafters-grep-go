@@ -10,11 +10,11 @@ import (
 // as well as for checkingParseTree with checkString
 type Parser struct {
 	i       int
-	pattern string
+	pattern []rune
 	context *ParserContext
 }
 
-func NewParser(pattern string) *Parser {
+func NewParser(pattern []rune) *Parser {
 	return &Parser{0, pattern, NewParserContext()}
 }
 
@@ -193,7 +193,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	// If true return else check till checkstring is end
 	// We need contigous match so skipChar is set to false once a first match (this is done in match(literals,nums, alphanums) is found
 	if c, ok := node.(Concat); ok {
-		println("Inside Concat, currentIndex = ", p.currentIndex(), c.get(), p.context.skipChars)
+		// println("Inside Concat, currentIndex = ", p.currentIndex(), c.get(), p.context.skipChars)
 		firstLeftChild, err := getFirstLeftChild(node)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -208,7 +208,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 		// Greedy parsing with Backtracking for fallback
 		if firstLeftChild == "Repeat()" {
-			println("Repeat Concat, index = ", p.currentIndex(), c.get())
+			// println("Repeat Concat, index = ", p.currentIndex(), c.get())
 			prevIndex := p.currentIndex()
 			leftParse, _ := p.CheckParseTree(c.leftNode)
 			// Repeat + has is one or more so index has to go up by 1 at the least
@@ -221,7 +221,6 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			if rightParse {
 				return true, nil
 			}
-			println("Backtrack")
 			// if greedy repeat does not work try backtracking
 			if !rightParse {
 				for i := p.currentIndex() - 1; i > prevIndex; i-- {
@@ -311,7 +310,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		var status bool = false
 		//FIXME: Using loop here is not the right thing i think
 		for i := p.i; i < len(p.pattern); i++ {
-			println("Retrying", p.context.skipChars, firstLeftChild)
+			// println("Retrying", p.context.skipChars, firstLeftChild)
 			if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[i])); matched {
 				p.moveIndex(i + 1)
 				p.context.skipChars = false

@@ -28,11 +28,11 @@ func main() {
 		os.Exit(2)
 	}
 
-	regExpParser := myast.NewParser(pattern)
+	regExpParser := myast.NewParser([]rune(pattern))
 	node := regExpParser.Parse0()
 	node.Log()
 
-	checkStringParser := myast.NewParser(string(line))
+	checkStringParser := myast.NewParser([]rune(string(line)))
 	ok, err := checkStringParser.CheckParseTree(node)
 	fmt.Println("result", ok)
 
