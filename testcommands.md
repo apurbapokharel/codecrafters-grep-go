@@ -21,7 +21,7 @@ echo -n "dogs" | ./your_program.sh -E "dogs?" //true
 echo -n "dog" | ./your_program.sh -E "dogs?" //true
 echo -n "doga" | ./your_program.sh -E "dogs?a" //true
 echo -n "dogssa" | ./your_program.sh -E "dogs?a" //true
-echo -n "a" | ./your_program.sh -E "s?" //true
+echo -n "a" | ./your_program.sh -E "s?" //true // TODO: does not handle this
 
 echo -n "cat" | ./your_program.sh -E "ca?t" //true
 echo -n "act" | ./your_program.sh -E "ca?t" //true

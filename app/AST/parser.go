@@ -187,9 +187,9 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 	// When the index matches the first left child it will parse the rest of the right tree
 	// If true return else check till checkstring is end
-	// We need contigous match so skipChar is set to false once a first match is found
+	// We need contigous match so skipChar is set to false once a first match (this is done in match(literals,nums, alphanums) is found
 	if c, ok := node.(Concat); ok {
-		println("Inside Concat, currentIndex = ", p.currentIndex(), c.get())
+		// println("Inside Concat, currentIndex = ", p.currentIndex(), c.get(), p.context.skipChars)
 		firstLeftChild, err := getFirstLeftChild(node)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -200,19 +200,18 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
-			// println("fs", firstLeftChild, secondLeftChild)
 		}
 
 		// Greedy parsing with Backtracking for fallback
 		if firstLeftChild == "Repeat()" {
-			println("Repeat Concat, index = ", p.currentIndex(), c.get())
+			// println("Repeat Concat, index = ", p.currentIndex(), c.get())
 			prevIndex := p.currentIndex()
 			leftParse, _ := p.CheckParseTree(c.leftNode)
 			// Repeat + has is one or more so index has to go up by 1 at the least
 			if prevIndex == p.currentIndex() || !leftParse {
 				return false, nil
 			}
-			p.context.skipChars = false
+			// p.context.skipChars = false
 			rightParse, _ := p.CheckParseTree(c.rightNode)
 			// if we can parse the whole string while greedy parsing the repeat return true
 			if rightParse {
@@ -235,21 +234,23 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 		// Greedy parsing with Backtracking for fallback
 		if firstLeftChild == "Optional()" {
-			println("Optional Concat, currentIndex = ", p.currentIndex(), c.get())
+			// println("Optional Concat, currentIndex = ", p.currentIndex(), c.get())
 			prevIndex := p.currentIndex()
+
 			// check optional first i.e skip lefttree parse
 			rightParse, _ := p.CheckParseTree(c.rightNode)
 			// if we can parse the whole string while greedy parsing the repeat return true
 			if rightParse {
 				return true, nil
 			} else {
+				// println("Skipping not mathcing OPtional")
 				p.moveIndex(prevIndex)
 			}
 
 			//treat the ? like a + now (1 or more time)
 			// Repeat + has is one or more so index has to go up by 1 at the least
 			leftParse, _ := p.CheckParseTree(c.leftNode)
-			p.context.skipChars = false
+			// p.context.skipChars = false
 			if prevIndex == p.currentIndex() || !leftParse {
 				return false, nil
 			}
@@ -278,7 +279,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			if !matched {
 				return false, nil
 			}
-			p.context.skipChars = false
+			// p.context.skipChars = false
 			success := p.checkRightSubtree(c.rightNode)
 			if success {
 				return true, nil
@@ -286,7 +287,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		}
 
 		if firstLeftChild == "Alternate()" {
-			println("Alternate Concat, index = ", p.currentIndex())
+			// println("Alternate Concat, index = ", p.currentIndex())
 			leftMatch, _ := p.CheckParseTree(c.leftNode)
 			rightMatch, _ := p.CheckParseTree(c.rightNode)
 			return leftMatch && rightMatch, nil
@@ -294,20 +295,37 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 		// println("FLC", firstLeftChild)
 		var status bool = false
+		//FIXME: Using loop here is not the right thing i think
 		for i := p.i; i < len(p.pattern); i++ {
+			// println("Retrying", p.context.skipChars, firstLeftChild)
 			if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[i])); matched {
 				p.moveIndex(i + 1)
 				p.context.skipChars = false
-				_, ok := c.rightNode.(Optional)
-				if ok {
-					//todo: skip this check
-					println("RN OPT")
-				}
+				// _, ok := c.rightNode.(Optional)
+				// if ok {
+				// 	//todo: skip this check
+				// 	println("RN OPT")
+				// }
 				success := p.checkRightSubtree(c.rightNode)
 				if success {
 					status = true
 					break
 				}
+				p.context.skipChars = true
+				p.moveIndex(i)
+				// break
+			}
+
+			// NOTE: honestly, this is the most complicated part. Figuring out this loop
+			// When i am 1 2 depth inside a recusrion (the skip chars will alreay be false),
+			// and if there is no match with the current ith character we dont wanna test other we wanna return false
+			// meaning false the 1st ever check befire all the recursion is false so check again
+			// echo -n "I am I see 1 cat, 2 dogs and 3 cows" | ./your_program.sh -E "I see (\d (cat|dog|cow)s?(, | and )?)+$" //true
+			// I will match but a will not so return false and then check again (in the main loop) thats what this means
+
+			// if we are searching inside a matched case we cannot skip chars
+			if !p.context.skipChars {
+				return false, nil
 			}
 		}
 		return status, nil
@@ -315,7 +333,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	}
 
 	if c, ok := node.(Repeat); ok {
-		println("Repeat Self, index = ", p.currentIndex(), c.get())
+		// println("Repeat Self, index = ", p.currentIndex(), c.get())
 		var res bool = false
 		for {
 			matched, _ := p.CheckParseTree(c.node)
@@ -324,18 +342,19 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 				break
 			}
 		}
-		println("Repeat Self out, curentIndex = ", p.currentIndex())
+		// println("Repeat Self out, curentIndex = ", p.currentIndex())
 		return res, nil
 
 	}
 
-	//TODO: fix this
+	//FIXME: this does not work echo -n "a" | ./your_program.sh -E "s?"
 	if c, ok := node.(Optional); ok {
-		println("Optinal Self, index = ", p.currentIndex(), c.get())
+		// println("Optinal Self, index = ", p.currentIndex(), c.get())
 		prevIndex := p.currentIndex()
 		var res bool = false
 		// check for 1 or more
 		for {
+			// println("Running OPtional loop")
 			matched, _ := p.CheckParseTree(c.node)
 			res = res || matched
 			if !matched {
@@ -344,26 +363,26 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		}
 		//if 1 or more false skipped this exp
 		if !res {
-			println("skip optional")
+			// println("skip optional")
 			p.moveIndex(prevIndex)
-			return true, nil
+			return false, nil
 		}
 		//else return true result after parsing optional
-		println("Optional Self out, curentIndex = ", p.currentIndex())
+		// println("Optional Self out, curentIndex = ", p.currentIndex())
 		return res, nil
 	}
 
 	if c, ok := node.(Alternate); ok {
-		println("Alternate Self, curentIndex = ", p.currentIndex())
+		// println("Alternate Self, curentIndex = ", p.currentIndex())
 		positionBefore := p.currentIndex()
 		leftTreeParse, _ := p.CheckParseTree(c.leftNode)
 		if leftTreeParse {
-			println("Alternate Self OUT, curentIndex = ", p.currentIndex())
+			// println("Alternate Self OUT1, curentIndex = ", p.currentIndex())
 			return true, nil
 		}
 		p.moveIndex(positionBefore)
 		rightTreeParse, _ := p.CheckParseTree(c.rightNode)
-		println("Alternate Self OUT, curentIndex = ", p.currentIndex())
+		// println("Alternate Self OUT2, curentIndex = ", p.currentIndex())
 		return rightTreeParse, nil
 	}
 
@@ -392,13 +411,18 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 	if c, ok := node.(Literal); ok {
 		if current == string(c.value) {
+			p.context.skipChars = false
 			p.advance()
 			return true, nil
 		} else {
 			if p.context.skipChars {
 				p.advance()
 				result, _ := p.CheckParseTree(node)
-				return false || result, nil
+				res := false || result
+				if res {
+					p.context.skipChars = false
+				}
+				return res, nil
 			}
 			return false, nil
 		}
@@ -406,13 +430,18 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 	if _, ok := node.(AlphaNum); ok {
 		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]$`, current); matched {
+			p.context.skipChars = false
 			p.advance()
 			return true, nil
 		} else {
 			if p.context.skipChars {
 				p.advance()
 				result, _ := p.CheckParseTree(node)
-				return false || result, nil
+				res := false || result
+				if res {
+					p.context.skipChars = false
+				}
+				return res, nil
 			}
 			return false, nil
 		}
@@ -420,13 +449,18 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 
 	if _, ok := node.(Digit); ok {
 		if matched, _ := regexp.MatchString(`^[0-9]$`, current); matched {
+			p.context.skipChars = false
 			p.advance()
 			return true, nil
 		} else {
 			if p.context.skipChars {
 				p.advance()
 				result, _ := p.CheckParseTree(node)
-				return false || result, nil
+				res := false || result
+				if res {
+					p.context.skipChars = false
+				}
+				return res, nil
 			}
 			return false, nil
 		}
@@ -436,7 +470,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 }
 
 func (p *Parser) checkRightSubtree(rightNode RegexpNode) bool {
-	defer func() { p.context.skipChars = true }()
+	// defer func() { p.context.skipChars = true }()
 	result, _ := p.CheckParseTree(rightNode)
 	return result
 }
