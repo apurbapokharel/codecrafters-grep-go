@@ -306,44 +306,60 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			return rightMatch, nil
 		}
 
-		// println("FLC", firstLeftChild)
+		// the else branch that handles literal, alphanums, digits
 		var status bool = false
-		//FIXME: Using loop here is not the right thing i think
-		for i := p.i; i < len(p.pattern); i++ {
-			// println("Retrying", p.context.skipChars, firstLeftChild)
-			if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[i])); matched {
-				p.moveIndex(i + 1)
-				p.context.skipChars = false
-				// _, ok := c.rightNode.(Optional)
-				// if ok {
-				// 	//todo: skip this check
-				// 	println("RN OPT")
-				// }
-				success := p.checkRightSubtree(c.rightNode)
-				if success {
-					status = true
-					break
-				}
-				// p.context.skipChars = true
-				p.moveIndex(i)
-				// break
-			}
 
-			// NOTE: honestly, this is the most complicated part. Figuring out this loop
-			// When i am 1 2 depth inside a recusrion (the skip chars will alreay be false),
-			// and if there is no match with the current ith character we dont wanna test other we wanna return false
-			// meaning false the 1st ever check befire all the recursion is false so check again
-			// echo -n "I am I see 1 cat, 2 dogs and 3 cows" | ./your_program.sh -E "I see (\d (cat|dog|cow)s?(, | and )?)+$" //true
-			// I will match but a will not so return false and then check again (in the main loop) thats what this means
-
-			// if we are searching inside a matched case we cannot skip chars
-			// if !p.context.skipChars {
-			// 	return false, nil
-			// }
+		if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[p.currentIndex()])); matched {
+			p.context.stackDepth++
+			p.moveIndex(p.currentIndex() + 1)
+			p.context.skipChars = false
+			status = p.checkRightSubtree(c.rightNode)
 		}
+		if status {
+			return true, nil
+		}
+		if p.context.stackDepth == 0 {
+			p.advance()
+			status = p.checkRightSubtree(node)
+		}
+		p.context.stackDepth--
 		return status, nil
-
 	}
+
+	/*
+				//FIXME: Using loop here is not the right thing i think
+				for i := p.i; i < len(p.pattern); i++ {
+					println("Retrying", i, p.context.skipChars, firstLeftChild)
+					if matched, _ := regexp.MatchString(firstLeftChild, string(p.pattern[i])); matched {
+						p.moveIndex(i + 1)
+						p.context.skipChars = false
+						success := p.checkRightSubtree(c.rightNode)
+						if success {
+							status = true
+							break
+						}
+						// p.context.skipChars = true
+						p.moveIndex(i)
+						// break
+					}
+
+					// NOTE: honestly, this is the most complicated part. Figuring out this loop
+					// When i am 1 2 depth inside a recusrion (the skip chars will alreay be false),
+					// and if there is no match with the current ith character we dont wanna test other we wanna return false
+					// meaning false till the 1st ever check (the one that calls the 1st recusion) so check again
+					// echo -n "I am I see 1 cat, 2 dogs and 3 cows" | ./your_program.sh -E "I see (\d (cat|dog|cow)s?(, | and )?)+$" //true
+					// "I" will match but "am" will not so return false and then check again (in the main loop) thats what this means
+					//but that does not happen, I was not able to implement that
+					// rather I is already matched and the program looks for the next string and continues match witout ever returning back to the 1st
+
+					// if we are searching inside a matched case we cannot skip chars
+					// if !p.context.skipChars {
+					// 	return false, nil
+					// }
+				}
+			// return status, nil
+		// }
+	*/
 
 	if c, ok := node.(Repeat); ok {
 		// println("Repeat Self, index = ", p.currentIndex(), c.get())
@@ -418,7 +434,6 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		}
 		var status bool = false
 		for i := 0; i < len(p.pattern); i++ {
-
 			if !dict[string(p.pattern[i])] {
 				status = true
 				break
@@ -531,6 +546,10 @@ func getFirstLeftChild(node RegexpNode) (string, error) {
 		return "Alternate()", nil
 	}
 
+	if c, ok := node.(AnchorStart); ok {
+		return c.get(), nil
+	}
+
 	if c, ok := node.(Wildcard); ok {
 		return c.get(), nil
 	}
@@ -545,10 +564,6 @@ func getFirstLeftChild(node RegexpNode) (string, error) {
 
 	if _, ok := node.(AlphaNum); ok {
 		return `^[0-9a-zA-Z]$`, nil
-	}
-
-	if c, ok := node.(AnchorStart); ok {
-		return c.get(), nil
 	}
 
 	// NOTE: AnchorEnd not needed as it will never be a left child it will always be a right child
