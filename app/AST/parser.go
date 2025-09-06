@@ -172,8 +172,8 @@ func (p *Parser) Parse3() RegexpNode {
 
 func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	current, isEnd := p.getCurrent()
-	// println(current, isEnd, node.get())
-	//end of checkstring
+	println(current, isEnd, node.get())
+	// end of checkstring
 	if isEnd {
 		if _, ok := node.(AnchorEnd); ok {
 			if p.i == len(p.pattern) {
@@ -181,8 +181,8 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 			}
 		}
 
-		//For handle dog with dogs?
-		//Skip the last part
+		// For handle dog with dogs?
+		// Skip the last part
 		if _, ok := node.(Optional); ok {
 			return true, nil
 		}
@@ -197,13 +197,6 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		firstLeftChild, err := getFirstLeftChild(node)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		}
-		var secondLeftChild string
-		if firstLeftChild == "AnchorStart()" {
-			secondLeftChild, err = getFirstLeftChild(c.rightNode)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			}
 		}
 
 		// Greedy parsing with Backtracking for fallback
@@ -251,7 +244,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 				p.moveIndex(prevIndex)
 			}
 
-			//treat the ? like a + now (1 or more time)
+			// treat the ? like a + now (1 or more time)
 			// Repeat + has is one or more so index has to go up by 1 at the least
 			leftParse, _ := p.CheckParseTree(c.leftNode)
 			// p.context.skipChars = false
@@ -279,15 +272,9 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		}
 
 		if firstLeftChild == "AnchorStart()" {
-			matched, _ := regexp.MatchString(secondLeftChild, string(p.pattern[0]))
-			if !matched {
-				return false, nil
-			}
-			// p.context.skipChars = false
+			p.context.anchorStart = true
 			success := p.checkRightSubtree(c.rightNode)
-			if success {
-				return true, nil
-			}
+			return success, nil
 		}
 
 		if firstLeftChild == "Alternate()" {
@@ -318,7 +305,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		if status {
 			return true, nil
 		}
-		if p.context.stackDepth == 0 {
+		if p.context.stackDepth == 0 && !p.context.anchorStart {
 			p.advance()
 			status = p.checkRightSubtree(node)
 		}
@@ -381,7 +368,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		return true, nil
 	}
 
-	//FIXME: this does not work echo -n "a" | ./your_program.sh -E "s?"
+	// FIXME: this does not work echo -n "a" | ./your_program.sh -E "s?"
 	if c, ok := node.(Optional); ok {
 		// println("Optinal Self, index = ", p.currentIndex(), c.get())
 		prevIndex := p.currentIndex()
@@ -395,13 +382,13 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 				break
 			}
 		}
-		//if 1 or more false skipped this exp
+		// if 1 or more false skipped this exp
 		if !res {
 			// println("skip optional")
 			p.moveIndex(prevIndex)
 			return false, nil
 		}
-		//else return true result after parsing optional
+		// else return true result after parsing optional
 		// println("Optional Self out, curentIndex = ", p.currentIndex())
 		return res, nil
 	}
@@ -425,7 +412,7 @@ func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 		return result, nil
 	}
 
-	//TODO: This is not a good solution i convert to AST and back to string but this was annoying and i wanted to be done with this
+	// TODO: This is not a good solution i convert to AST and back to string but this was annoying and i wanted to be done with this
 	if c, ok := node.(NegativeCharacterGroup); ok {
 		dict := make(map[string]bool)
 		regularExp := getExpFromTree(c.node)
@@ -569,5 +556,4 @@ func getFirstLeftChild(node RegexpNode) (string, error) {
 	// NOTE: AnchorEnd not needed as it will never be a left child it will always be a right child
 
 	return "", fmt.Errorf("Unsupported pattern:", node.get())
-
 }
