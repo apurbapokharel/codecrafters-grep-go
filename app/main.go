@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -49,27 +50,51 @@ func main() {
 		}
 		// ./your_program.sh -E "carrot" fruits.txt
 	} else if len(os.Args) == 4 {
-		// read the file to get the checkString
-		data, err := os.ReadFile(os.Args[3])
+		// // read the file to get the checkString
+		// data, err := os.ReadFile(os.Args[3])
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		file, err := os.Open(os.Args[3])
 		if err != nil {
 			panic(err)
 		}
-		// parse the pattern to a ParseTree
-		regExpParser := myast.NewParser([]rune(os.Args[2]))
-		node := regExpParser.Parse0()
-		// node.Log()
-		// check the presence of the pattern inside the checkString
-		checkStringParser := myast.NewParser([]rune(string(data)))
-		ok, err := checkStringParser.CheckParseTree(node)
-		// println("result", ok)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(2)
+		defer file.Close()
+
+		var lines []string
+		scanner := bufio.NewScanner(file)
+
+		// Read each line and append to the slice
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
 		}
-		if !ok {
+
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+
+		noMatch := true
+		for _, line := range lines {
+			// parse the pattern to a ParseTree
+			regExpParser := myast.NewParser([]rune(os.Args[2]))
+			node := regExpParser.Parse0()
+			// node.Log()
+			// check the presence of the pattern inside the checkString
+			checkStringParser := myast.NewParser([]rune(line))
+			ok, err := checkStringParser.CheckParseTree(node)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(2)
+			}
+			if ok {
+				fmt.Println(line)
+				noMatch = false
+			}
+		}
+		if noMatch {
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
 	}
 	// default exit code is 0 which means success
 }

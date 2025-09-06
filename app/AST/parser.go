@@ -172,7 +172,7 @@ func (p *Parser) Parse3() RegexpNode {
 
 func (p *Parser) CheckParseTree(node RegexpNode) (bool, error) {
 	current, isEnd := p.getCurrent()
-	println(current, isEnd, node.get())
+	// println(current, isEnd, node.get())
 	// end of checkstring
 	if isEnd {
 		if _, ok := node.(AnchorEnd); ok {
