@@ -14,39 +14,63 @@ var _ = bytes.ContainsAny
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
 // os.Args = [/tmp/codecrafters-build-grep-go -E a]
+
 func main() {
 	if len(os.Args) < 3 || os.Args[1] != "-E" {
 		fmt.Fprintf(os.Stderr, "usage: mygrep -E <pattern>\n")
 		os.Exit(2) // 1 means no lines were selected, >1 means error
 	}
 
-	pattern := os.Args[2]
+	// echo -n "log" | ./your_program.sh -E "^log"
+	if len(os.Args) == 3 {
+		pattern := os.Args[2]
+		line, err := io.ReadAll(os.Stdin) // assume we're only dealing with a single line
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: read input text: %v\n", err)
+			os.Exit(2)
+		}
+		// Build the pattern into a ParseTree
+		regExpParser := myast.NewParser([]rune(pattern))
+		node := regExpParser.Parse0()
+		node.Log()
+		// Once the tree is built check the ParsedPattern against the checkString
+		checkStringParser := myast.NewParser([]rune(string(line)))
+		ok, err := checkStringParser.CheckParseTree(node)
+		fmt.Println("result", ok)
 
-	line, err := io.ReadAll(os.Stdin) // assume we're only dealing with a single line
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: read input text: %v\n", err)
-		os.Exit(2)
+		// ok, err := matchLine2(line, pattern)
+		// ok, err := matchChars(string(line), pattern)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(2)
+		}
+		if !ok {
+			os.Exit(1)
+		}
+		// ./your_program.sh -E "carrot" fruits.txt
+	} else if len(os.Args) == 4 {
+		// read the file to get the checkString
+		data, err := os.ReadFile(os.Args[3])
+		if err != nil {
+			panic(err)
+		}
+		// parse the pattern to a ParseTree
+		regExpParser := myast.NewParser([]rune(os.Args[2]))
+		node := regExpParser.Parse0()
+		// node.Log()
+		// check the presence of the pattern inside the checkString
+		checkStringParser := myast.NewParser([]rune(string(data)))
+		ok, err := checkStringParser.CheckParseTree(node)
+		// println("result", ok)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(2)
+		}
+		if !ok {
+			os.Exit(1)
+		}
+		fmt.Println(string(data))
 	}
-
-	regExpParser := myast.NewParser([]rune(pattern))
-	node := regExpParser.Parse0()
-	node.Log()
-
-	checkStringParser := myast.NewParser([]rune(string(line)))
-	ok, err := checkStringParser.CheckParseTree(node)
-	fmt.Println("result", ok)
-
-	// ok, err := matchLine2(line, pattern)
-	// ok, err := matchChars(string(line), pattern)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(2)
-	}
-
-	if !ok {
-		os.Exit(1)
-	}
-
 	// default exit code is 0 which means success
 }
 
