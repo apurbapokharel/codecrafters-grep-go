@@ -49,51 +49,58 @@ func main() {
 			os.Exit(1)
 		}
 		// ./your_program.sh -E "carrot" fruits.txt
-	} else if len(os.Args) == 4 {
-		// // read the file to get the checkString
-		// data, err := os.ReadFile(os.Args[3])
-		// if err != nil {
-		// 	panic(err)
-		// }
+		// ./your_program.sh -E "search_pattern" file1.txt file2.txt
+	} else if len(os.Args) >= 4 {
+		length := len(os.Args) - 3
+		fileArray := make([]string, 0, length)
 
-		file, err := os.Open(os.Args[3])
-		if err != nil {
-			panic(err)
+		for i := range length {
+			fileArray = append(fileArray, os.Args[3+i])
 		}
-		defer file.Close()
-
-		var lines []string
-		scanner := bufio.NewScanner(file)
-
-		// Read each line and append to the slice
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-
-		if err := scanner.Err(); err != nil {
-			panic(err)
-		}
-
-		noMatch := true
-		for _, line := range lines {
-			// parse the pattern to a ParseTree
-			regExpParser := myast.NewParser([]rune(os.Args[2]))
-			node := regExpParser.Parse0()
-			// node.Log()
-			// check the presence of the pattern inside the checkString
-			checkStringParser := myast.NewParser([]rune(line))
-			ok, err := checkStringParser.CheckParseTree(node)
+		for _, file := range fileArray {
+			if file == " " {
+				continue
+			}
+			file, err := os.Open(file)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(2)
+				panic(err)
 			}
-			if ok {
-				fmt.Println(line)
-				noMatch = false
+			defer file.Close()
+
+			var lines []string
+			scanner := bufio.NewScanner(file)
+
+			// Read each line and append to the slice
+			for scanner.Scan() {
+				lines = append(lines, scanner.Text())
 			}
-		}
-		if noMatch {
-			os.Exit(1)
+
+			if err := scanner.Err(); err != nil {
+				panic(err)
+			}
+
+			noMatch := true
+			for _, line := range lines {
+				// parse the pattern to a ParseTree
+				regExpParser := myast.NewParser([]rune(os.Args[2]))
+
+				node := regExpParser.Parse0()
+				// node.Log()
+				// check the presence of the pattern inside the checkString
+				checkStringParser := myast.NewParser([]rune(line))
+				ok, err := checkStringParser.CheckParseTree(node)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					os.Exit(2)
+				}
+				if ok {
+					fmt.Println(line)
+					noMatch = false
+				}
+			}
+			if noMatch {
+				os.Exit(1)
+			}
 		}
 	}
 	// default exit code is 0 which means success
