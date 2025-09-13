@@ -57,11 +57,9 @@ func main() {
 		for i := range length {
 			fileArray = append(fileArray, os.Args[3+i])
 		}
-		for _, file := range fileArray {
-			if file == " " {
-				continue
-			}
-			file, err := os.Open(file)
+		noMatch := true
+		for _, fileName := range fileArray {
+			file, err := os.Open(fileName)
 			if err != nil {
 				panic(err)
 			}
@@ -79,7 +77,6 @@ func main() {
 				panic(err)
 			}
 
-			noMatch := true
 			for _, line := range lines {
 				// parse the pattern to a ParseTree
 				regExpParser := myast.NewParser([]rune(os.Args[2]))
@@ -94,13 +91,19 @@ func main() {
 					os.Exit(2)
 				}
 				if ok {
-					fmt.Println(line)
+					if length > 1 {
+						fmt.Printf("%s:%s\n", fileName, line)
+						// fmt.Println("lines", line)
+						// println(fileName, ":", line)
+					} else {
+						fmt.Println(line)
+					}
 					noMatch = false
 				}
 			}
-			if noMatch {
-				os.Exit(1)
-			}
+		}
+		if noMatch {
+			os.Exit(1)
 		}
 	}
 	// default exit code is 0 which means success
