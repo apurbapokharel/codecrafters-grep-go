@@ -1,2 +1,0 @@
-parrot eats apple.
-Dog does not eat banana.
