@@ -15,19 +15,15 @@ import (
 // Ensures gofmt doesn't remove the "bytes" import above (feel free to remove this!)
 var _ = bytes.ContainsAny
 
-// Usage: echo <input_text> | your_program.sh -E <pattern>
-// os.Args = [/tmp/codecrafters-build-grep-go -E a]
-
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Fprintf(os.Stderr, "usage: mygrep -E <pattern>\n")
 		os.Exit(2) // 1 means no lines were selected, >1 means error
 	}
-
-	// echo -n "log" | ./your_program.sh -E "^log"
+	line, err := io.ReadAll(os.Stdin)
 	if len(os.Args) == 3 {
+		// assume we're only dealing with a single line
 		pattern := os.Args[2]
-		line, err := io.ReadAll(os.Stdin) // assume we're only dealing with a single line
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: read input text: %v\n", err)
 			os.Exit(2)
@@ -39,10 +35,6 @@ func main() {
 		// Once the tree is built check the ParsedPattern against the checkString
 		checkStringParser := myast.NewParser([]rune(string(line)))
 		ok, err := checkStringParser.CheckParseTree(node)
-		fmt.Println("result", ok)
-
-		// ok, err := matchLine2(line, pattern)
-		// ok, err := matchChars(string(line), pattern)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(2)
@@ -53,9 +45,9 @@ func main() {
 	} else if len(os.Args) >= 4 {
 		if os.Args[1] == "-r" {
 			// ./your_program.sh -r -E ".*er" dir/
-			pathTree, _ := BuildFileTree(os.Args[4])
 			regExpParser := myast.NewParser([]rune(os.Args[3]))
 			node := regExpParser.Parse0()
+			pathTree, _ := BuildFileTree(os.Args[4])
 			status := TraverseTreeAndCheck(pathTree, node)
 			if status {
 				os.Exit(1)
@@ -65,51 +57,21 @@ func main() {
 			// ./your_program.sh -E "search_pattern" file1.txt file2.txt
 			length := len(os.Args) - 3
 			fileArray := make([]string, 0, length)
-
 			for i := range length {
 				fileArray = append(fileArray, os.Args[3+i])
 			}
 			noMatch := true
+			regExpParser := myast.NewParser([]rune(os.Args[2]))
+			node := regExpParser.Parse0()
 			for _, fileName := range fileArray {
-				file, err := os.Open(fileName)
-				if err != nil {
-					panic(err)
+				var showDir bool
+				if length > 1 {
+					showDir = true
+				} else {
+					showDir = false
 				}
-				defer file.Close()
-
-				var lines []string
-				scanner := bufio.NewScanner(file)
-
-				// Read each line and append to the slice
-				for scanner.Scan() {
-					lines = append(lines, scanner.Text())
-				}
-
-				if err := scanner.Err(); err != nil {
-					panic(err)
-				}
-
-				for _, line := range lines {
-					// parse the pattern to a ParseTree
-					regExpParser := myast.NewParser([]rune(os.Args[2]))
-
-					node := regExpParser.Parse0()
-					// node.Log()
-					// check the presence of the pattern inside the checkString
-					checkStringParser := myast.NewParser([]rune(line))
-					ok, err := checkStringParser.CheckParseTree(node)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: %v\n", err)
-						os.Exit(2)
-					}
-					if ok {
-						if length > 1 {
-							fmt.Printf("%s:%s\n", fileName, line)
-						} else {
-							fmt.Println(line)
-						}
-						noMatch = false
-					}
+				if processFileForMatch(fileName, node, showDir) {
+					noMatch = false
 				}
 			}
 			if noMatch {
@@ -146,45 +108,12 @@ func TraverseTreeAndCheck(root *mytree.FileTree, astNode myast.RegexpNode) bool 
 	queue := []*mytree.FileTree{root}
 	noMatch := true
 	for len(queue) > 0 {
-		// Dequeue the first node
 		node := queue[0]
 		queue = queue[1:]
 
-		// fmt.Printf("Visiting: %s (Is directory: %t)\n", node.Pwd, node.IsDirectory)
 		if !node.IsDirectory {
-			// Enqueue all children of the current node
-			// need to check if the current file has the checkstring
-			file, err := os.Open(node.Pwd)
-			if err != nil {
-				panic(err)
-			}
-			defer file.Close()
-
-			var lines []string
-			scanner := bufio.NewScanner(file)
-
-			// Read each line and append to the slice
-			for scanner.Scan() {
-				lines = append(lines, scanner.Text())
-			}
-
-			if err := scanner.Err(); err != nil {
-				panic(err)
-			}
-
-			for _, line := range lines {
-				// parse the pattern to a ParseTree
-				// check the presence of the pattern inside the checkString
-				checkStringParser := myast.NewParser([]rune(line))
-				ok, err := checkStringParser.CheckParseTree(astNode)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: %v\n", err)
-					os.Exit(2)
-				}
-				if ok {
-					fmt.Printf("%s:%s\n", node.Pwd, line)
-					noMatch = false
-				}
+			if processFileForMatch(node.FileName, astNode, true) {
+				noMatch = false
 			}
 		}
 		for _, child := range node.Children {
@@ -192,4 +121,39 @@ func TraverseTreeAndCheck(root *mytree.FileTree, astNode myast.RegexpNode) bool 
 		}
 	}
 	return noMatch
+}
+
+// It returns true if at least one match is found, otherwise it returns false.
+func processFileForMatch(fileName string, astNode myast.RegexpNode, printDir bool) bool {
+	noMatch := true
+	file, err := os.Open(fileName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(2)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		checkStringParser := myast.NewParser([]rune(line))
+		ok, err := checkStringParser.CheckParseTree(astNode)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(2)
+		}
+		if ok {
+			if printDir {
+				fmt.Printf("%s:%s\n", fileName, line)
+			} else {
+				fmt.Println(line)
+			}
+			noMatch = false
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(2)
+	}
+	return !noMatch
 }
